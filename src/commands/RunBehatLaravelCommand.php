@@ -4,8 +4,8 @@ use Illuminate\Console\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
-class RunBehatLaravelCommand extends Command {
-
+class RunBehatLaravelCommand extends Command
+{
     /**
      * The console command name.
      *
@@ -32,11 +32,11 @@ class RunBehatLaravelCommand extends Command {
      * @var array
      */
     protected $config;
-    
+
     /**
      * Create a new BehatLaravel command instance.
      *
-     * @param  GuilhermeGuitte\BehatLaravel  $behat
+     * @param  GuilhermeGuitte\BehatLaravel $behat
      * @return void
      */
     public function __construct($config)
@@ -54,9 +54,12 @@ class RunBehatLaravelCommand extends Command {
     {
         passthru('clear');
 
+
         $this->line('');
 
         $this->comment("Running acceptance tests... \n\n");
+
+        $this->checkEnvironment();
 
         $input = array();
         $input[] = '';
@@ -68,15 +71,15 @@ class RunBehatLaravelCommand extends Command {
                 $input[] = "--$option=".$format;
             }
         }
-        
+
+
         $profile = $this->option('profile');
-        
-        if(!empty($profile)){
+
+        if (!empty($profile)) {
             $profile_config = $this->loadConfig($profile);
-        }else{
+        } else {
             $profile_config = $this->loadConfig('default');
         }
-        
 
         $input[] = $profile_config['paths']['features'].'/'.$this->input->getArgument('feature');
 
@@ -85,6 +88,23 @@ class RunBehatLaravelCommand extends Command {
         $app->run(new \Symfony\Component\Console\Input\ArgvInput(
             $input
         ));
+    }
+
+    /**
+     * Detect env and ensure that we dont accidentally run our tests on a production database
+     */
+    public function checkEnvironment()
+    {
+        $envs[] = $this->option('env');
+        $envs[] = \App::environment();
+
+        if (in_array('production', $envs)) {
+            if (!$this->confirm('Are you sure you wish to run this command ? [y:N]', false)) {
+                $this->info('Cancelled : Not run');
+                exit;
+            }
+        }
+
     }
 
     /**
@@ -110,18 +130,19 @@ class RunBehatLaravelCommand extends Command {
             array('name', NULL, InputOption::VALUE_REQUIRED, 'Only execute the feature elements which match part of the given name or regex.'),
         );
     }
-    
+
     /**
      * Load the profile specific config
      *
-     * @param string $profile
+     * @param  string     $profile
      * @return array|NULL
      */
-    protected function loadConfig($profile){
-    
-        if(!empty($this->config)){
+    protected function loadConfig($profile)
+    {
+        if (!empty($this->config)) {
             return (isset($this->config[$profile]))? $this->config[$profile] : null;
         }
+
         return null;
     }
 }
