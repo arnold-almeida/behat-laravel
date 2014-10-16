@@ -1,6 +1,7 @@
 <?php namespace GuilhermeGuitte\BehatLaravel;
 
 use Illuminate\Console\Command;
+use Illuminate\Config\Repository;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 
@@ -34,14 +35,23 @@ class RunBehatLaravelCommand extends Command
     protected $config;
 
     /**
+     * Package config from guilhermeguitte\behat-laravel\src\config\config.php
+     * @var array
+     */
+    protected $environmentConfig;
+
+    /**
      * Create a new BehatLaravel command instance.
      *
      * @param  GuilhermeGuitte\BehatLaravel $behat
      * @return void
      */
-    public function __construct($config)
+    public function __construct($config, $environmentConfig)
     {
+        $this->environmentConfig = $environmentConfig;
         $this->config = $config;
+
+
         parent::__construct();
     }
 
@@ -59,6 +69,8 @@ class RunBehatLaravelCommand extends Command
 
         $this->comment("Running acceptance tests... \n\n");
 
+        $this->setDefaultEnvironment();
+
         $this->checkEnvironment();
 
         $input = array();
@@ -71,7 +83,6 @@ class RunBehatLaravelCommand extends Command
                 $input[] = "--$option=".$format;
             }
         }
-
 
         $profile = $this->option('profile');
 
@@ -91,20 +102,31 @@ class RunBehatLaravelCommand extends Command
     }
 
     /**
+     * If no environment has been provided use the default environment
+     * Typically ("testing") as defined in our package config
+     */
+    public function setDefaultEnvironment()
+    {
+        $env = $this->option('env');
+
+        if (!$env) {
+            $this->input->setOption('env', $this->environmentConfig['default']);
+        }
+    }
+
+    /**
      * Detect env and ensure that we dont accidentally run our tests on a production database
      */
     public function checkEnvironment()
     {
-        $envs[] = $this->option('env');
-        $envs[] = \App::environment();
+        $env = $this->option('env');
 
-        if (in_array('production', $envs)) {
-            if (!$this->confirm('Are you sure you wish to run this command ? [y:N]', false)) {
-                $this->info('Cancelled : Not run');
+        if (in_array($env, $this->environmentConfig['blacklisted'])) {
+            if (!$this->confirm("Are you sure you wish to run tests on your [{$env}] env ? [y:N]", false)) {
+                $this->info("Cancelled : Running tests in [{$env}] is cray cray!");
                 exit;
             }
         }
-
     }
 
     /**

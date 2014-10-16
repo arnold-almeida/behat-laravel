@@ -19,8 +19,11 @@ class BehatLaravelServiceProvider extends ServiceProvider {
      */
     public function register()
     {
-        
-       
+        // Register package namespace
+        $this->package('guilhermeguitte/behat-laravel');
+
+        $environmentConfig = $this->app['config']->get('behat-laravel::environments');
+
         $this->app['command.behat.install'] = $this->app->share(function($app)
         {
             return new BehatLaravelCommand();
@@ -28,10 +31,10 @@ class BehatLaravelServiceProvider extends ServiceProvider {
 
         $this->commands('command.behat.install');
 
-        $this->app['command.behat.run'] = $this->app->share(function($app)
+        $this->app['command.behat.run'] = $this->app->share(function($app) use($environmentConfig)
         {
             $config = Yaml::parse('app/../behat.yml');
-            return new RunBehatLaravelCommand($config);
+            return new RunBehatLaravelCommand($config, $environmentConfig);
         });
 
         $this->commands('command.behat.run');
